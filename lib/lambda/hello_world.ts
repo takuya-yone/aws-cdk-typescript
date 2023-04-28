@@ -1,1 +1,1 @@
-export const handler = async () => "Hello World!";
+export const handler = async () => 'Hello World!';
