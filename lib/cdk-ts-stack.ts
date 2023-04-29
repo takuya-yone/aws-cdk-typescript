@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
+import * as apigateway from 'aws-cdk-lib/aws-apigateway';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 
@@ -30,5 +31,13 @@ export class CdkTsStack extends cdk.Stack {
       environment: { DYNAMO_TABLE_NAME: table.tableName },
     });
     func.addEventSource(eventSource);
+
+    const api = new apigateway.LambdaRestApi(this, 'cdk-typescript-api', {
+      handler: func,
+      proxy: false,
+    });
+
+    const items = api.root.addResource('api');
+    items.addMethod('GET'); // GET /items
   }
 }
