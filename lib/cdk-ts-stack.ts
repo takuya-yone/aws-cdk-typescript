@@ -4,6 +4,7 @@ import * as sqs from 'aws-cdk-lib/aws-sqs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigateway from 'aws-cdk-lib/aws-apigateway';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 
@@ -16,14 +17,28 @@ export class CdkTsStack extends cdk.Stack {
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
     });
 
-    // console.log(table);
-    // console.log("heeelleoeoeieoeoe--e-e--");
-
-    // example resource
     const queue = new sqs.Queue(this, 'CdkTsQueue', {
       visibilityTimeout: cdk.Duration.seconds(300),
     });
     const eventSource = new SqsEventSource(queue);
+
+    const funcRole = new iam.Role(this, 'FunctionRole', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+    });
+    funcRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName('AWSXrayWriteOnlyAccess')
+    );
+    funcRole.addManagedPolicy(
+      iam.ManagedPolicy.fromAwsManagedPolicyName(
+        'service-role/AWSLambdaBasicExecutionRole'
+      )
+    );
+    funcRole.addToPolicy(
+      new iam.PolicyStatement({
+        resources: ['*'],
+        actions: ['ce:GetCostAndUsage'],
+      })
+    );
 
     const func = new NodejsFunction(this, 'Function', {
       entry: 'lib/lambda/hello_world.ts',
@@ -31,6 +46,7 @@ export class CdkTsStack extends cdk.Stack {
       environment: { DYNAMO_TABLE_NAME: table.tableName },
       tracing: lambda.Tracing.ACTIVE,
       timeout: cdk.Duration.seconds(30),
+      role: funcRole,
     });
     func.addEventSource(eventSource);
 
